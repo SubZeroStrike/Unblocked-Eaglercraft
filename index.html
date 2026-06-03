@@ -1,84 +1,104 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>EaglercraftZ Frame</title>
+    <title>Debug Loader</title>
     <style>
         html, body {
             margin: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden;
             background: #111;
-            color: white;
+            color: #fff;
             font-family: Arial, sans-serif;
         }
 
         #status {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 5px;
+            padding: 15px;
+            white-space: pre-wrap;
         }
 
         iframe {
             width: 100%;
-            height: 100%;
+            height: calc(100% - 120px);
             border: none;
+            display: none;
         }
     </style>
 </head>
 <body>
 
-<div id="status">Loading...</div>
-
+<div id="status">Starting...</div>
 <iframe id="gameFrame"></iframe>
 
 <script>
+const statusBox = document.getElementById("status");
+const frame = document.getElementById("gameFrame");
+
+function log(msg) {
+    console.log(msg);
+    statusBox.textContent += "\n" + msg;
+}
+
 (async () => {
-    const status = document.getElementById("status");
-    const frame = document.getElementById("gameFrame");
-
     try {
-        const targetURL = "https://eaglercraftz.pages.dev";
+        const target = "https://eaglercraftz.pages.dev";
 
-        status.textContent = "Fetching site...";
+        log("Preparing request...");
 
-        const response = await fetch(
+        const proxyURL =
             "https://api.allorigins.win/get?url=" +
-            encodeURIComponent(targetURL)
-        );
+            encodeURIComponent(target);
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        log("Request URL:");
+        log(proxyURL);
+
+        const response = await fetch(proxyURL);
+
+        log("Response received.");
+        log("HTTP Status: " + response.status);
+
+        const text = await response.text();
+
+        log("Response length: " + text.length);
+
+        let data;
+
+        try {
+            data = JSON.parse(text);
+            log("JSON parsed successfully.");
+        } catch (e) {
+            log("JSON parse failed.");
+            log(text.substring(0, 500));
+            return;
         }
-
-        const data = await response.json();
 
         if (!data.contents) {
-            throw new Error("No HTML returned");
+            log("No contents field found.");
+            return;
         }
 
-        status.textContent = "Building page...";
+        log("Creating blob...");
 
         const blob = new Blob(
             [data.contents],
             { type: "text/html" }
         );
 
-        frame.src = URL.createObjectURL(blob);
+        const blobURL = URL.createObjectURL(blob);
+
+        log("Loading iframe...");
+
+        frame.style.display = "block";
+        frame.src = blobURL;
 
         frame.onload = () => {
-            status.style.display = "none";
+            log("Iframe loaded.");
         };
 
     } catch (err) {
+        log("ERROR:");
+        log(err.toString());
         console.error(err);
-        status.innerHTML =
-            "<b>Failed to load site</b><br>" +
-            err.message;
     }
 })();
 </script>
